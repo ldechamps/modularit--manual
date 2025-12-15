@@ -1,8 +1,8 @@
 {
   "files": [
     ".gitattributes",
+    ".github/pull_request_template.md",
     ".github/workflows/build-push.yml",
-    ".github/workflows/pull-request-lint.yml",
     ".gitignore",
     ".npmignore",
     ".projen/deps.json",

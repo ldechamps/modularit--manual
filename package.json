@@ -12,7 +12,6 @@
     "package": "npx projen package",
     "post-compile": "npx projen post-compile",
     "pre-compile": "npx projen pre-compile",
-    "start": "npx projen start",
     "test": "npx projen test",
     "test:watch": "npx projen test:watch",
     "projen": "npx projen"

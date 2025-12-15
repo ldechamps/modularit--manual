@@ -135,14 +135,6 @@
       "name": "pre-compile",
       "description": "Prepare the project for compilation"
     },
-    "start": {
-      "name": "start",
-      "steps": [
-        {
-          "exec": "node lib/index.js"
-        }
-      ]
-    },
     "test": {
       "name": "test",
       "description": "Run tests",
