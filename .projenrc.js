@@ -18,6 +18,10 @@ const project = new javascript.NodeProject({
   packageManager: javascript.NodePackageManager.NPM,
   minNodeVersion: config.nodeVersion,
   
+  // 🔴 Désactiver les releases
+  release: false,
+  releaseToNpm: false,
+  
   scripts: {
     'start': 'node lib/index.js',
     'docker:build': `docker build -t ${config.name}:latest .`,
