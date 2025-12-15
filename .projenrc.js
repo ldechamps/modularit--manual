@@ -36,14 +36,15 @@ project.addTask('docker:run', {
   exec: `docker run -p ${config.port}:${config.port} ${config.name}:latest`
 });
 
+
 // ✅ Dockerfile
 const dockerfile = `# Build stage
 FROM node:${config.nodeVersion}-alpine AS builder
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci
+COPY package.json ./
+RUN npm i
 COPY . .
-RUN npm run build --if-present
+# RUN npm run build
 
 # Production stage
 FROM node:${config.nodeVersion}-alpine
@@ -51,8 +52,7 @@ WORKDIR /app
 RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
 COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nodejs:nodejs /app/lib ./lib
-RUN npm ci --only=production && npm cache clean --force
+
 USER nodejs
 EXPOSE ${config.port}
 CMD ["npm", "start"]
@@ -66,6 +66,7 @@ new TextFile(project, 'Dockerfile', {
 
 // ✅ .dockerignore
 const dockerignore = `node_modules
+package-lock.json
 npm-debug.log
 .git
 .gitignore
