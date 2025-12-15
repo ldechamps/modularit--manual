@@ -24,11 +24,30 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+      - name: Check if image already exists in ECR
+        id: check-image
+        run: "
+
+          \        set +e
+
+          \        aws ecr describe-images           --repository-name modularite           --image-ids imageTag=${{ github.sha }}           > /dev/null 2>&1
+
+
+          \        if [ $? -eq 0 ]; then
+
+          \          echo \"exists=true\" >> $GITHUB_OUTPUT
+
+          \        else
+
+          \          echo \"exists=false\" >> $GITHUB_OUTPUT
+
+          \        fi
+
+          \      "
       - name: Build and push Docker image
+        if: steps.check-image.outputs.exists != 'true'
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ${{ steps.login-ecr.outputs.registry }}/modularite:${{ github.sha }},${{ steps.login-ecr.outputs.registry }}/modularite:latest
-      - name: Image info
-        run: 'echo "✅ Image pushed: ${{ steps.login-ecr.outputs.registry }}/modularite:${{ github.sha }}"'
+          tags: ${{ steps.login-ecr.outputs.registry }}/modularite:${{ github.sha }},${{ steps.login-ecr.outputs.registry }}/modularite

@@ -107,26 +107,46 @@ wf.addJob('build', {
   },
   steps: [
     { name: 'Checkout', uses: 'actions/checkout@v4' },
-    { 
+
+    {
       name: 'Configure AWS credentials',
       uses: 'aws-actions/configure-aws-credentials@v4',
       with: {
         'role-to-assume': '${{ secrets.AWS_ROLE_ARN_TO_ASSUME_FOR_ECR_MODULARITE }}',
         'aws-region': config.awsRegion,
-       // 'role-session-name': 'GHActionSession' in directus9 for email checkin
       },
     },
+
     { name: 'Login to Amazon ECR', id: 'login-ecr', uses: 'aws-actions/amazon-ecr-login@v2' },
-    { 
+
+    {
+      name: 'Check if image already exists in ECR',
+      id: 'check-image',
+      run: `
+        set +e
+        aws ecr describe-images \
+          --repository-name ${config.ecrRepositoryName} \
+          --image-ids imageTag=\${{ github.sha }} \
+          > /dev/null 2>&1
+
+        if [ $? -eq 0 ]; then
+          echo "exists=true" >> $GITHUB_OUTPUT
+        else
+          echo "exists=false" >> $GITHUB_OUTPUT
+        fi
+      `,
+    },
+
+    {
       name: 'Build and push Docker image',
+      if: "steps.check-image.outputs.exists != 'true'",
       uses: 'docker/build-push-action@v5',
       with: {
         context: '.',
         push: true,
-        tags: `\${{ steps.login-ecr.outputs.registry }}/${config.ecrRepositoryName}:\${{ github.sha }},\${{ steps.login-ecr.outputs.registry }}/${config.ecrRepositoryName}:latest`,
+        tags: `\${{ steps.login-ecr.outputs.registry }}/${config.ecrRepositoryName}:\${{ github.sha }},\${{ steps.login-ecr.outputs.registry }}/${config.ecrRepositoryName}`,
       },
     },
-    { name: 'Image info', run: `echo "✅ Image pushed: \${{ steps.login-ecr.outputs.registry }}/${config.ecrRepositoryName}:\${{ github.sha }}"` },
   ],
 });
 
