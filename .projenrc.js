@@ -144,7 +144,7 @@ wf.addJob('build', {
       with: {
         context: '.',
         push: true,
-        tags: `\${{ steps.login-ecr.outputs.registry }}/${config.ecrRepositoryName}:\${{ github.sha }},\${{ steps.login-ecr.outputs.registry }}/${config.ecrRepositoryName}`,
+        tags: `\${{ steps.login-ecr.outputs.registry }}/${config.ecrRepositoryName}:\${{ github.sha }}`,
       },
     },
   ],
