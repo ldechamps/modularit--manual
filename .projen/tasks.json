@@ -87,6 +87,22 @@
         }
       ]
     },
+    "docker:build": {
+      "name": "docker:build",
+      "steps": [
+        {
+          "exec": "docker build -t test:latest ."
+        }
+      ]
+    },
+    "docker:run": {
+      "name": "docker:run",
+      "steps": [
+        {
+          "exec": "docker run -p 3000:3000 test:latest"
+        }
+      ]
+    },
     "eject": {
       "name": "eject",
       "description": "Remove projen from the project",
@@ -162,6 +178,14 @@
         },
         {
           "exec": "git diff --ignore-space-at-eol --exit-code"
+        }
+      ]
+    },
+    "start": {
+      "name": "start",
+      "steps": [
+        {
+          "exec": "node lib/index.js"
         }
       ]
     },

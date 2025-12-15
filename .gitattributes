@@ -2,6 +2,7 @@
 
 * text=auto eol=lf
 *.snap linguist-generated
+/.dockerignore linguist-generated
 /.gitattributes linguist-generated
 /.github/pull_request_template.md linguist-generated
 /.github/workflows/build-push.yml linguist-generated
@@ -16,6 +17,7 @@
 /.projen/deps.json linguist-generated
 /.projen/files.json linguist-generated
 /.projen/tasks.json linguist-generated
+/Dockerfile linguist-generated
 /LICENSE linguist-generated
 /package-lock.json linguist-generated
 /package.json linguist-generated

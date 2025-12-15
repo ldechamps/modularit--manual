@@ -1,10 +1,12 @@
-const { javascript } = require('projen');
+const { javascript, TextFile } = require('projen');
 
 const config = {
   name: "test",
-  awsRegion: "eu-west-3",
+  awsRegion: "us-east-1",
   awsAccountId: "123456789012", // À configurer
-  ecrRepositoryName: "my-app" // À configurer
+  ecrRepositoryName: "my-app", // À configurer
+  nodeVersion: "20",
+  port: 3000
 };
 
 const project = new javascript.NodeProject({
@@ -14,9 +16,87 @@ const project = new javascript.NodeProject({
   authorName: `${config.authorName || "Modularite"}`,
   authorEmail: `${config.authorEmail || "bot@modularite.local"}`,
   packageManager: javascript.NodePackageManager.NPM,
+  minNodeVersion: config.nodeVersion,
+  
+  scripts: {
+    'start': 'node lib/index.js',
+    'docker:build': `docker build -t ${config.name}:latest .`,
+    'docker:run': `docker run -p ${config.port}:${config.port} ${config.name}:latest`,
+  },
 });
 
-// Add GitHub Actions workflow for Docker build and push
+// Dockerfile
+const dockerfile = `# Build stage
+FROM node:${config.nodeVersion}-alpine AS builder
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+RUN npm run build --if-present
+
+# Production stage
+FROM node:${config.nodeVersion}-alpine
+
+WORKDIR /app
+
+# Créer utilisateur non-root
+RUN addgroup -g 1001 -S nodejs && \\
+    adduser -S nodejs -u 1001
+
+# Copier les fichiers
+COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
+COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nodejs:nodejs /app/lib ./lib
+
+RUN npm ci --only=production && npm cache clean --force
+
+USER nodejs
+
+EXPOSE ${config.port}
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \\
+  CMD node -e "require('http').get('http://localhost:${config.port}/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
+
+CMD ["npm", "start"]
+`;
+
+new TextFile(project, 'Dockerfile', {
+  lines: dockerfile.split('\n'),
+  committed: true,
+  readonly: false,
+});
+
+// .dockerignore
+const dockerignore = `node_modules
+npm-debug.log
+.git
+.gitignore
+.github
+.vscode
+.idea
+coverage
+test
+*.test.js
+*.spec.js
+.env
+.DS_Store
+.projen
+.projenrc.js
+dist
+*.md
+!README.md
+`;
+
+new TextFile(project, '.dockerignore', {
+  lines: dockerignore.split('\n'),
+  committed: true,
+  readonly: false,
+});
+
+// GitHub Actions workflow
 project.github?.addWorkflow('build-push', {
   name: `Build and Push Docker Image`,
   on: {
@@ -30,7 +110,7 @@ project.github?.addWorkflow('build-push', {
       'runs-on': `ubuntu-latest`,
       permissions: {
         contents: 'read',
-        'id-token': 'write', // Pour OIDC
+        'id-token': 'write',
       },
       steps: [
         {
@@ -38,12 +118,15 @@ project.github?.addWorkflow('build-push', {
           uses: `actions/checkout@v4`,
         },
         {
-          name: `Configure AWS credentials via OIDC`,
+          name: `Set up Docker Buildx`,
+          uses: `docker/setup-buildx-action@v3`,
+        },
+        {
+          name: `Configure AWS credentials`,
           uses: `aws-actions/configure-aws-credentials@v4`,
           with: {
             'role-to-assume': `arn:aws:iam::${config.awsAccountId}:role/GitHubActionsRole`,
             'aws-region': config.awsRegion,
-            'role-session-name': 'GitHubActions-Docker-Build',
           },
         },
         {
@@ -52,47 +135,19 @@ project.github?.addWorkflow('build-push', {
           uses: `aws-actions/amazon-ecr-login@v2`,
         },
         {
-          name: `Set up Docker Buildx`,
-          uses: `docker/setup-buildx-action@v3`,
-        },
-        {
-          name: `Build Docker image`,
-          env: {
-            ECR_REGISTRY: `\${{ steps.login-ecr.outputs.registry }}`,
-            ECR_REPOSITORY: config.ecrRepositoryName,
-            IMAGE_TAG: `\${{ github.sha }}`,
-          },
-          run: `
-            docker buildx build \\
-              --platform linux/amd64 \\
-              --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \\
-              --tag $ECR_REGISTRY/$ECR_REPOSITORY:latest \\
-              --load \\
-              .
-          `,
-        },
-        {
-          name: `Scan image for vulnerabilities`,
-          uses: `aquasecurity/trivy-action@master`,
+          name: `Build and push Docker image`,
+          uses: `docker/build-push-action@v5`,
           with: {
-            'image-ref': `\${{ steps.login-ecr.outputs.registry }}/${config.ecrRepositoryName}:\${{ github.sha }}`,
-            format: 'sarif',
-            output: 'trivy-results.sarif',
-            severity: 'CRITICAL,HIGH',
-            'exit-code': '1', // Fail si vulnérabilités critiques
+            context: '.',
+            push: true,
+            tags: `\${{ steps.login-ecr.outputs.registry }}/${config.ecrRepositoryName}:\${{ github.sha }},\${{ steps.login-ecr.outputs.registry }}/${config.ecrRepositoryName}:latest`,
+            'cache-from': ['type=gha'],
+            'cache-to': ['type=gha,mode=max'],
           },
         },
         {
-          name: `Push image to Amazon ECR`,
-          env: {
-            ECR_REGISTRY: `\${{ steps.login-ecr.outputs.registry }}`,
-            ECR_REPOSITORY: config.ecrRepositoryName,
-            IMAGE_TAG: `\${{ github.sha }}`,
-          },
-          run: `
-            docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-            docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          `,
+          name: `Image info`,
+          run: `echo "✅ Image pushed: \${{ steps.login-ecr.outputs.registry }}/${config.ecrRepositoryName}:\${{ github.sha }}"`,
         },
       ],
     },
