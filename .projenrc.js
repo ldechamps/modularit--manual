@@ -18,9 +18,12 @@ const project = new javascript.NodeProject({
   packageManager: javascript.NodePackageManager.NPM,
   minNodeVersion: config.nodeVersion,
   
-  // 🔴 Désactiver les releases
+  // 🔴 Désactiver tous les workflows par défaut
   release: false,
   releaseToNpm: false,
+  buildWorkflow: false,
+  depsUpgrade: false,
+  pullRequestTemplate: false,
   
   scripts: {
     'start': 'node lib/index.js',
@@ -100,7 +103,7 @@ new TextFile(project, '.dockerignore', {
   readonly: false,
 });
 
-// GitHub Actions workflow
+// GitHub Actions workflow - UNIQUEMENT build-push
 project.github?.addWorkflow('build-push', {
   name: `Build and Push Docker Image`,
   on: {
