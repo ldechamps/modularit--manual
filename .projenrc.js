@@ -2,9 +2,8 @@ const { javascript, TextFile } = require('projen');
 
 const config = {
   name: "test",
-  awsRegion: "us-east-1",
-  awsAccountId: "123456789012", // À configurer
-  ecrRepositoryName: "my-app", // À configurer
+  awsRegion: "eu-west-3",
+  ecrRepositoryName: "modularite", // À configurer
   nodeVersion: "20",
   port: 3000
 };
@@ -111,8 +110,9 @@ wf.addJob('build', {
       name: 'Configure AWS credentials',
       uses: 'aws-actions/configure-aws-credentials@v4',
       with: {
-        'role-to-assume': `arn:aws:iam::${config.awsAccountId}:role/GitHubActionsRole`,
+        'role-to-assume': '${{ secrets.AWS_ROLE_ARN_TO_ASSUME_FOR_ECR_MODULARITE }}',
         'aws-region': config.awsRegion,
+       // 'role-session-name': 'GHActionSession' in directus9 for email checkin
       },
     },
     { name: 'Login to Amazon ECR', id: 'login-ecr', uses: 'aws-actions/amazon-ecr-login@v2' },

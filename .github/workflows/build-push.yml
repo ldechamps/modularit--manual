@@ -19,8 +19,8 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::123456789012:role/GitHubActionsRole
-          aws-region: us-east-1
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_TO_ASSUME_FOR_ECR_MODULARITE }}
+          aws-region: eu-west-3
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -29,6 +29,6 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ steps.login-ecr.outputs.registry }}/my-app:${{ github.sha }},${{ steps.login-ecr.outputs.registry }}/my-app:latest
+          tags: ${{ steps.login-ecr.outputs.registry }}/modularite:${{ github.sha }},${{ steps.login-ecr.outputs.registry }}/modularite:latest
       - name: Image info
-        run: 'echo "✅ Image pushed: ${{ steps.login-ecr.outputs.registry }}/my-app:${{ github.sha }}"'
+        run: 'echo "✅ Image pushed: ${{ steps.login-ecr.outputs.registry }}/modularite:${{ github.sha }}"'
